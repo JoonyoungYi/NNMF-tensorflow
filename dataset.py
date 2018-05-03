@@ -43,12 +43,12 @@ def init_data_sets():
     f.close()
 
     train_user, train_item, train_rating = _gen_and_split_from_txt(
-        'data/ml-100k/u2.base', delimiter='\t', usecols=(0, 1, 2), dtype=int)
+        'data/ml-100k/u1.base', delimiter='\t', usecols=(0, 1, 2), dtype=int)
     train_user = _encode(train_user, user_ids)
     train_item = _encode(train_item, item_ids)
 
     test_user, test_item, test_rating = _gen_and_split_from_txt(
-        'data/ml-100k/u2.test', delimiter='\t', usecols=(0, 1, 2), dtype=int)
+        'data/ml-100k/u1.test', delimiter='\t', usecols=(0, 1, 2), dtype=int)
     test_user = _encode(test_user, user_ids)
     test_item = _encode(test_item, item_ids)
 

@@ -60,14 +60,14 @@ def init_models(user_number, item_number):
             i_node_number = HIDDEN_LAYER_NODE_NUMBER
             o_node_number = HIDDEN_LAYER_NODE_NUMBER
 
+        random_abs_max_val = _get_random_abs_max_val(i_node_number,
+                                                     o_node_number)
         Ws.append(
             tf.Variable(
                 tf.random_uniform(
                     [i_node_number, o_node_number],
-                    minval=-_get_random_abs_max_val(i_node_number,
-                                                    o_node_number),
-                    maxval=_get_random_abs_max_val(i_node_number,
-                                                   o_node_number))))
+                    minval=-random_abs_max_val,
+                    maxval=random_abs_max_val)))
         bs.append(tf.Variable(tf.zeros([o_node_number])))
     X_hat = _build_mlp(theta, Ws, bs)  # predicted rating of our network.
 
@@ -79,7 +79,9 @@ def init_models(user_number, item_number):
             tf.reduce_sum(tf.square(U_prime)),
             tf.reduce_sum(tf.square(V_prime))
         ])
-    train = tf.train.RMSPropOptimizer(learning_rate=LEARNING_RATE).minimize(
+    # train = tf.train.RMSPropOptimizer(learning_rate=LEARNING_RATE).minimize(
+    #     loss, var_list=[U, U_prime, V, V_prime] + Ws + bs)
+    train = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE * 0.1).minimize(
         loss, var_list=[U, U_prime, V, V_prime] + Ws + bs)
     RMSE = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(X, X_hat))))
 
