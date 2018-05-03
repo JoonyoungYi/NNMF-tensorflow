@@ -67,10 +67,9 @@ def init_models(user_number, item_number):
     loss = tf.nn.l2_loss(tf.subtract(X, X_hat)) + LAMBDA * tf.nn.l2_loss(
         tf.concat(
             [U_lookup, V_lookup, U_prime_lookup, V_prime_lookup], axis=1))
-    train = tf.train.AdamOptimizer().minimize(
+    train = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(
         loss, var_list=[U, U_prime, V, V_prime] + Ws + bs)
     RMSE = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(X, X_hat))))
-
 
     return {
         'X': X,
