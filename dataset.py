@@ -28,6 +28,14 @@ def init_data_sets():
     global test_item
     global test_rating
 
+    if not os.path.exists('data'):
+        os.mkdir('data')
+    if not os.path.exists('data/ml-100k'):
+        os.system(
+            'wget http://files.grouplens.org/datasets/movielens/ml-100k.zip -O data/ml-100k.zip'
+        )
+        os.system('unzip data/ml-100k.zip -d data')
+
     user_ids = np.genfromtxt(
         'data/ml-100k/u.user', delimiter='|', usecols=(0), dtype=int)
     f = open('data/ml-100k/u.item', 'r', errors='replace')
