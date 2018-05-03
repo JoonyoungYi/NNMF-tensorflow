@@ -1,29 +1,34 @@
+import math
+
 import tensorflow as tf
 
 from config import *
 
 
+def _get_random_abs_max_val(i_node_number, o_node_number):
+    return 4.0 * math.sqrt(6.0) / math.sqrt(i_node_number + o_node_number)
+
+
 def _build_mlp(theta, Ws, bs):
     layer = theta
     for W, b in zip(Ws[:-1], bs[:-1]):
-        layer = tf.nn.relu(tf.matmul(layer, W) + b)
-    return tf.nn.relu(tf.matmul(layer, Ws[-1]) + bs[-1])
+        layer = tf.nn.sigmoid(tf.matmul(layer, W) + b)
+    return tf.nn.sigmoid(tf.matmul(layer, Ws[-1]) + bs[-1])
 
 
 def init_models(user_number, item_number):
     # Latent Variables
-    # QUESTION: 논문에서 trnacted_normal을 하라고 했는가? 그냥 random_normal 쓰면 안되나?
     U = tf.Variable(
-        tf.truncated_normal(
+        tf.random_normal(
             [user_number, D], mean=INITIAL_MEAN, stddev=INITIAL_STDDEV))
     U_prime = tf.Variable(
-        tf.truncated_normal(
+        tf.random_normal(
             [user_number, D_prime], mean=INITIAL_MEAN, stddev=INITIAL_STDDEV))
     V = tf.Variable(
-        tf.truncated_normal(
+        tf.random_normal(
             [item_number, D], mean=INITIAL_MEAN, stddev=INITIAL_STDDEV))
     V_prime = tf.Variable(
-        tf.truncated_normal(
+        tf.random_normal(
             [item_number, D_prime], mean=INITIAL_MEAN, stddev=INITIAL_STDDEV))
     # QUESTION: U_prime과 V_prime은 왜 등장하는 것인가?
 
@@ -57,17 +62,20 @@ def init_models(user_number, item_number):
 
         Ws.append(
             tf.Variable(
-                tf.random_normal(
-                    [i_node_number, o_node_number], stddev=INITIAL_STDDEV)))
+                tf.random_uniform(
+                    [i_node_number, o_node_number],
+                    minval=-_get_random_abs_max_val(i_node_number,
+                                                    o_node_number),
+                    maxval=_get_random_abs_max_val(i_node_number,
+                                                   o_node_number))))
         bs.append(tf.Variable(tf.zeros([o_node_number])))
     X_hat = _build_mlp(theta, Ws, bs)  # predicted rating of our network.
-    # # QUESTION: 진짜 output node 1개 실화?!
 
     # Define Losses
-    loss = tf.nn.l2_loss(tf.subtract(X, X_hat)) + LAMBDA * tf.nn.l2_loss(
-        tf.concat(
-            [U_lookup, V_lookup, U_prime_lookup, V_prime_lookup], axis=1))
-    train = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(
+    loss = tf.nn.l2_loss(tf.subtract(X, X_hat)) + LAMBDA * (
+        tf.norm(U_lookup, ord='fro') + tf.norm(V_lookup, ord='fro') + tf.norm(
+            U_prime_lookup, ord='fro') + tf.norm(V_prime_lookup, ord='fro'))
+    train = tf.train.RMSPropOptimizer(learning_rate=LEARNING_RATE).minimize(
         loss, var_list=[U, U_prime, V, V_prime] + Ws + bs)
     RMSE = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(X, X_hat))))
 
