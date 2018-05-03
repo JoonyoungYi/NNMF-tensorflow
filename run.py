@@ -19,10 +19,10 @@ def main(session):
     test_user_ids, test_item_ids, test_xs = dataset.get_test_data()
 
     for epoch_idx in range(EPOCH_NUMBER):
-        batch_user_ids, batch_item_ids, batch_xs = dataset.next_batch()
         for batch_idx in range(dataset.get_total_batch_number()):
-            _ = session.run(
-                (models['loss'], models['train']),
+            batch_user_ids, batch_item_ids, batch_xs = dataset.next_batch()
+            rmse, loss, _ = session.run(
+                (models['RMSE'], models['loss'], models['train']),
                 feed_dict={
                     models['X']: batch_xs,
                     models['user_ids']: batch_user_ids,
