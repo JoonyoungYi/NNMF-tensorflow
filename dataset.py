@@ -12,6 +12,8 @@ train_rating = None
 
 def _gen_and_split_from_txt(*args, **kwargs):
     data = np.genfromtxt(*args, **kwargs)
+    np.random.shuffle(data)
+
     user = data[:, 0]
     item = data[:, 1]
     rating = data[:, 2]

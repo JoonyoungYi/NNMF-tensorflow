@@ -13,7 +13,7 @@ def _build_mlp(theta, Ws, bs):
     layer = theta
     for W, b in zip(Ws[:-1], bs[:-1]):
         layer = tf.nn.sigmoid(tf.matmul(layer, W) + b)
-    return tf.nn.sigmoid(tf.matmul(layer, Ws[-1]) + bs[-1])
+    return tf.matmul(layer, Ws[-1]) + bs[-1]
 
 
 def init_models(user_number, item_number):
@@ -30,7 +30,6 @@ def init_models(user_number, item_number):
     V_prime = tf.Variable(
         tf.random_normal(
             [item_number, D_prime], mean=INITIAL_MEAN, stddev=INITIAL_STDDEV))
-    # QUESTION: U_prime과 V_prime은 왜 등장하는 것인가?
 
     # Lookups
     # QUESTION: embedding_sparse_lookup 쓰면 더 퍼포먼스가 좋아지지 않을까?
@@ -79,15 +78,19 @@ def init_models(user_number, item_number):
             tf.reduce_sum(tf.square(U_prime)),
             tf.reduce_sum(tf.square(V_prime))
         ])
-    # train = tf.train.RMSPropOptimizer(learning_rate=LEARNING_RATE).minimize(
+    trains = [
+        tf.train.RMSPropOptimizer(learning_rate=LEARNING_RATE).minimize(
+            loss, var_list=[U, U_prime, V, V_prime]),
+        tf.train.RMSPropOptimizer(learning_rate=LEARNING_RATE).minimize(
+            loss, var_list=Ws + bs)
+    ]
+    # train = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(
     #     loss, var_list=[U, U_prime, V, V_prime] + Ws + bs)
-    train = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE * 0.1).minimize(
-        loss, var_list=[U, U_prime, V, V_prime] + Ws + bs)
     RMSE = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(X, X_hat))))
 
     return {
         'X': X,
-        'train': train,
+        'trains': trains,
         'loss': loss,
         'RMSE': RMSE,
         'user_ids': user_ids,

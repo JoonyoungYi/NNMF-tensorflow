@@ -21,13 +21,15 @@ def main(session):
     for epoch_idx in range(EPOCH_NUMBER):
         for batch_idx in range(dataset.get_total_batch_number()):
             batch_user_ids, batch_item_ids, batch_xs = dataset.next_batch()
-            rmse, loss, _ = session.run(
-                (models['RMSE'], models['loss'], models['train']),
-                feed_dict={
-                    models['X']: batch_xs,
-                    models['user_ids']: batch_user_ids,
-                    models['item_ids']: batch_item_ids
-                }, )
+            for train in models['trains']:
+                rmse, loss, _ = session.run(
+                    (models['RMSE'], models['loss'], train),
+                    feed_dict={
+                        models['X']: batch_xs,
+                        models['user_ids']: batch_user_ids,
+                        models['item_ids']: batch_item_ids
+                    }, )
+                print(rmse, loss)
 
         train_rmse, train_loss = session.run(
             (models['RMSE'], models['loss']),
