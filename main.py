@@ -71,8 +71,8 @@ def train(model, sess, saver, train_data, valid_data, batch_size, max_iters,
             saver.save(sess, model.model_filename)
 
 
-def test(model, sess, saver, test_data, train_data=None, log=True):
-    if train_data:
+def test(model, sess, saver, test_data, train_data=pd.DataFrame(), log=True):
+    if train_data.empty:
         train_rmse = model.eval_rmse(train_data)
         if log:
             print("Final train RMSE: {}".format(train_rmse))
