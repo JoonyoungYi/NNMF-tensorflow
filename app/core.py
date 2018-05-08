@@ -167,7 +167,6 @@ def run():
     # Parse args
     args = parser.parse_args()
     # Global args
-    mode = 'train'
     train_filename = args.train
     valid_filename = args.valid
     test_filename = args.test
@@ -181,128 +180,34 @@ def run():
     early_stop_max_iter = args.early_stop_max_iter
     max_iters = args.max_iters
 
-    if mode in ('train', 'test'):
-        with tf.Session() as sess:
-            # Define computation graph & Initialize
-            print('Building network & initializing variables')
+    with tf.Session() as sess:
+        # Define computation graph & Initialize
+        print('Building network & initializing variables')
 
-            model = NNMF(num_users, num_items, **model_params)
-            model.init_sess(sess)
-            saver = tf.train.Saver()
+        model = NNMF(num_users, num_items, **model_params)
+        model.init_sess(sess)
+        saver = tf.train.Saver()
 
-            # Train
-            if mode in ('train', 'test'):
-                # Process data
-                print("Reading in data")
-                train_data, valid_data, test_data = load_data(
-                    train_filename,
-                    valid_filename,
-                    test_filename,
-                    delimiter=delimiter,
-                    col_names=col_names)
+        # Process data
+        print("Reading in data")
+        train_data, valid_data, test_data = load_data(
+            train_filename,
+            valid_filename,
+            test_filename,
+            delimiter=delimiter,
+            col_names=col_names)
 
-                if mode == 'train':
-                    train(
-                        model,
-                        sess,
-                        saver,
-                        train_data,
-                        valid_data,
-                        batch_size=batch_size,
-                        max_iters=max_iters,
-                        use_early_stop=use_early_stop,
-                        early_stop_max_iter=early_stop_max_iter)
+        train(
+            model,
+            sess,
+            saver,
+            train_data,
+            valid_data,
+            batch_size=batch_size,
+            max_iters=max_iters,
+            use_early_stop=use_early_stop,
+            early_stop_max_iter=early_stop_max_iter)
 
-                print('Loading best checkpointed model')
-                saver.restore(sess, model.model_filename)
-                test(model, sess, saver, test_data, train_data=train_data)
-
-    elif mode == 'select':
-        print('Training model with multiple hyperparameter variations')
-
-        hyperparam_search_size = args.hyperparam_search_size
-
-        # Generate list of hyperparams (model param dicts)
-        hyperparams_list = []
-        best_setting, best_rmse, best_test_rmse = None, float('Inf'), None
-
-        _NNMF_LAM_MIN, _NNMF_LAM_MAX = -4.0, 4.0
-        _SVINNMF_VAR_MIN, _SVINNMF_VAR_MAX = -2.0, 2.0
-        _SVINNMF_KL_ITER_MIN, _SVINNMF_KL_ITER_MAX = 2.0, 4.0
-        for _ in range(hyperparam_search_size):
-            hyperparams_list.append({
-                'lam':
-                10**np.random.uniform(_NNMF_LAM_MIN, _NNMF_LAM_MAX)
-            })
-
-        # Setup folder to store models
-        timestamp = int(time.time())
-        select_dir = "select/{}".format(timestamp)
-        if not os.path.exists(select_dir):
-            os.makedirs(select_dir)
-
-        # Run for each setting
-        print("Running for hyperparam settings: {}".format(hyperparams_list))
-        for idx, hyperparams in enumerate(hyperparams_list):
-            print("----\n{}: {}\n----".format(idx, hyperparams))
-
-            # Update model params with hyperparams and model filename
-            model_params.update(hyperparams)
-            model_params.update({
-                'model_filename':
-                os.path.join(select_dir, "{}.ckpt".format(str(idx)))
-            })
-
-            with tf.Session() as sess:
-                # Define computation graph & Initialize
-                print('Building network & initializing variables')
-                model = NNMF(num_users, num_items, **model_params)
-
-                model.init_sess(sess)
-                saver = tf.train.Saver()
-
-                # Train
-                print("Reading in data")
-                train_data, valid_data, test_data = load_data(
-                    train_filename,
-                    valid_filename,
-                    test_filename,
-                    delimiter=delimiter,
-                    col_names=col_names)
-
-                train(
-                    model,
-                    sess,
-                    saver,
-                    train_data,
-                    valid_data,
-                    batch_size=batch_size,
-                    max_iters=max_iters,
-                    use_early_stop=use_early_stop,
-                    early_stop_max_iter=early_stop_max_iter)
-
-                print('Loading best checkpointed model')
-                saver.restore(sess, model.model_filename)
-                valid_rmse = model.eval_rmse(valid_data)
-
-                # Log the results to file
-                with open(os.path.join(select_dir, 'results.tsv'),
-                          'a') as log_out:
-                    log_out.write(
-                        "{}\t{:3f}\t{}\n".format(idx, valid_rmse, hyperparams))
-
-                # Update the best setting, if applicable
-                if valid_rmse < best_rmse:
-                    best_rmse = valid_rmse
-                    best_setting = hyperparams
-                    best_test_rmse = test(
-                        model, sess, saver, test_data, log=False)
-
-        # Spit out the best hyperparams and the model's performance on test set
-        print(
-            "\n====\nBest setting: {} ({:3f})".format(best_setting, best_rmse))
-        print("Final test RMSE: {:3f}".format(best_test_rmse))
-        print('====')
-
-    else:
-        raise Exception("Mode '{}' not available".format(mode))
+        print('Loading best checkpointed model')
+        saver.restore(sess, model.model_filename)
+        test(model, sess, saver, test_data, train_data=train_data)

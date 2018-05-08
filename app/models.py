@@ -93,7 +93,10 @@ class NNMF(object):
         self.loss = reconstruction_loss + (self.lam * reg)
 
         # Optimizer
-        self.optimizer = tf.train.AdamOptimizer()
+        # self.optimizer = tf.train.AdamOptimizer()
+        # self.optimizer = tf.train.AdamOptimizer(1e-4)
+        self.optimizer = tf.train.RMSPropOptimizer(1e-3)
+
         # Optimize the MLP weights
         f_train_step = self.optimizer.minimize(
             self.loss,
