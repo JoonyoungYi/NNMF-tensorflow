@@ -77,4 +77,10 @@ def load_ml_100k_data():
     test_data['user_id'] = test_data['user_id'] - 1
     test_data['item_id'] = test_data['item_id'] - 1
 
-    return {'train': train_data, 'valid': valid_data, 'test': test_data}
+    return {
+        'train': train_data,
+        'valid': valid_data,
+        'test': test_data,
+        'user_number': 943,
+        'item_number': 1682
+    }

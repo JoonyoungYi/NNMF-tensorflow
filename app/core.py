@@ -1,28 +1,20 @@
-import argparse, json, time, os
-
 import tensorflow as tf
-import pandas as pd
-import numpy as np
 
 from .models import NNMF
 from .utils import dataset
+from .config import *
 
 
-def train(model, sess, saver, train_data, valid_data, batch_size, max_iters,
-          use_early_stop, early_stop_max_iter):
-    # Print initial values
-    batch = train_data.sample(batch_size) if batch_size else train_data
-    print(batch.shape)
-    print(valid_data.shape)
-    train_error = model.eval_loss(batch)
-    train_rmse = model.eval_rmse(batch)
-    valid_rmse = model.eval_rmse(valid_data)
-    print("{:3f} {:3f}, {:3f}".format(train_error, train_rmse, valid_rmse))
+def _get_batch(train_data, batch_size):
+    if batch_size:
+        return train_data.sample(batch_size)
+    return train_data
 
-    # Optimize
+
+def _train(model, sess, saver, train_data, valid_data, batch_size):
     prev_valid_rmse = float("Inf")
     early_stop_iters = 0
-    for i in range(max_iters):
+    for i in range(MAX_ITER):
         # Run SGD
         batch = train_data.sample(batch_size) if batch_size else train_data
         model.train_iteration(batch)
@@ -33,14 +25,13 @@ def train(model, sess, saver, train_data, valid_data, batch_size, max_iters,
         valid_rmse = model.eval_rmse(valid_data)
         print("{:3f} {:3f}, {:3f}".format(train_error, train_rmse, valid_rmse))
 
-        # Checkpointing/early stopping
-        if use_early_stop:
+        if EARLY_STOP:
             early_stop_iters += 1
             if valid_rmse < prev_valid_rmse:
                 prev_valid_rmse = valid_rmse
                 early_stop_iters = 0
                 saver.save(sess, model.model_filename)
-            elif early_stop_iters == early_stop_max_iter:
+            elif early_stop_iters >= EARLY_STOP_MAX_ITER:
                 print("Early stopping ({} vs. {})...".format(
                     prev_valid_rmse, valid_rmse))
                 break
@@ -48,112 +39,32 @@ def train(model, sess, saver, train_data, valid_data, batch_size, max_iters,
             saver.save(sess, model.model_filename)
 
 
-def test(model, test_data):
+def _test(model, test_data):
     test_rmse = model.eval_rmse(test_data)
     print("Final test RMSE: {}".format(test_rmse))
     return test_rmse
 
 
-def run():
-    # Set up command line params
-    parser = argparse.ArgumentParser(
-        description='Trains/evaluates NNMF models.')
-    parser.add_argument(
-        '--users',
-        metavar='NUM_USERS',
-        type=int,
-        default=943,  # ML 100K has 943 users
-        help='the number of users in the data set')
-    parser.add_argument(
-        '--movies',
-        metavar='NUM_MOVIES',
-        type=int,
-        default=1682,  # ML 100K has 1682 movies
-        help='the number of movies in the data set')
-    parser.add_argument(
-        '--model-params',
-        metavar='MODEL_PARAMS_JSON',
-        type=str,
-        default='{}',
-        help='JSON string containing model params')
-    parser.add_argument(
-        '--delim',
-        metavar='DELIMITER',
-        type=str,
-        default='\t',
-        help='the delimiter to use when parsing input files')
-    parser.add_argument(
-        '--cols',
-        metavar='COL_NAMES',
-        type=str,
-        default=['user_id', 'item_id', 'rating'],
-        help='the column names of the input data',
-        nargs='+')
-    parser.add_argument(
-        '--no-early',
-        default=False,
-        action='store_true',
-        help='disable early stopping')
-    parser.add_argument(
-        '--early-stop-max-iter',
-        metavar='EARLY_STOP_MAX_ITER',
-        type=int,
-        default=40,
-        help=
-        'the maximum number of iterations to let the model continue training after reaching a '
-        'minimum validation error')
-    parser.add_argument(
-        '--max-iters',
-        metavar='MAX_ITERS',
-        type=int,
-        default=10000,
-        help='the maximum number of iterations to allow the model to train for'
-    )
-    parser.add_argument(
-        '--hyperparam-search-size',
-        metavar='HYPERPARAM_SEARCH_SIZE',
-        type=int,
-        default=50,
-        help=
-        'when in "select" mode, the number of times to sample for random search'
-    )
-
-    # Parse args
-    args = parser.parse_args()
-    # Global args
-    num_users = args.users
-    num_items = args.movies
-    model_params = json.loads(args.model_params)
-    delimiter = args.delim
-    col_names = args.cols
-    batch_size = None
-    use_early_stop = not (args.no_early)
-    early_stop_max_iter = args.early_stop_max_iter
-    max_iters = args.max_iters
-
+def run(batch_size=None):
     with tf.Session() as sess:
-        # Define computation graph & Initialize
-        print('Building network & initializing variables')
-
-        model = NNMF(num_users, num_items, **model_params)
-        model.init_sess(sess)
-        saver = tf.train.Saver()
-
         # Process data
         print("Reading in data")
         data = dataset.load_data(dataset.ML_100K)
 
-        train(
+        # Define computation graph & Initialize
+        print('Building network & initializing variables')
+        model = NNMF(data['user_number'], data['item_number'])
+        model.init_sess(sess)
+        saver = tf.train.Saver()
+
+        _train(
             model,
             sess,
             saver,
             data['train'],
             data['valid'],
-            batch_size=batch_size,
-            max_iters=max_iters,
-            use_early_stop=use_early_stop,
-            early_stop_max_iter=early_stop_max_iter)
+            batch_size=batch_size)
 
         print('Loading best checkpointed model')
         saver.restore(sess, model.model_filename)
-        test(model, data['test'])
+        _test(model, data['test'])
