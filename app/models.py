@@ -1,10 +1,6 @@
-#!/usr/bin/env python2.7
-from __future__ import absolute_import, print_function
-"""Defines NNMF models."""
-# Third party modules
 import tensorflow as tf
-# Local modules
-from .utils import KL, build_mlp, get_kl_weight
+
+from .utils.mlp import build as build_mlp
 
 
 class _NNMFBase(object):
@@ -16,7 +12,7 @@ class _NNMFBase(object):
                  hidden_units_per_layer=50,
                  latent_normal_init_params={'mean': 0.0,
                                             'stddev': 0.1},
-                 model_filename='model/nnmf.ckpt'):
+                 model_filename='logs/1/nnmf.ckpt'):
         self.num_users = num_users
         self.num_items = num_items
         self.D = D
@@ -138,6 +134,7 @@ class NNMF(_NNMFBase):
 
         _r, self.mlp_weights = build_mlp(
             f_input_layer, hidden_units_per_layer=self.hidden_units_per_layer)
+        # self.r = _r
         self.r = tf.squeeze(_r, squeeze_dims=[1])
 
     def _init_ops(self):

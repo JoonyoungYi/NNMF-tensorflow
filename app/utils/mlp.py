@@ -1,18 +1,6 @@
-#!/usr/bin/env python2.7
-from __future__ import absolute_import, print_function
-"""Various utils."""
-# Standard modules
 import math
-# Third party modules
+
 import tensorflow as tf
-
-
-def KL(mean, log_var, prior_var):
-    """Computes KL divergence for a group of univariate normals (ie. every dimension of a latent)."""
-    return tf.reduce_sum(
-        tf.log(math.sqrt(prior_var) / tf.sqrt(tf.exp(log_var))) +
-        ((tf.exp(log_var) + tf.square(mean)) / (2.0 * prior_var)),
-        reduction_indices=[0, 1])
 
 
 def _weight_init_range(n_in, n_out):
@@ -24,7 +12,7 @@ def _weight_init_range(n_in, n_out):
     }
 
 
-def build_mlp(f_input_layer, hidden_units_per_layer):
+def build(f_input_layer, hidden_units_per_layer):
     """Builds a feed-forward NN (MLP) with 3 hidden layers."""
     # Note: tf.contrib.layers could likely be used instead, but total control allows for easier debugging in this case
     # TODO make number of hidden layers a parameter, if needed
@@ -60,9 +48,3 @@ def build_mlp(f_input_layer, hidden_units_per_layer):
     out = tf.nn.sigmoid(tf.matmul(mlp_layer_3, mlp_weights['out'])) * 4 + 1
 
     return out, mlp_weights
-
-
-def get_kl_weight(curr_iter, on_iter=100):
-    """Outputs sigmoid scheduled KL weight term (to be fully on at 'on_iter')"""
-    return 1.0 / (1 + math.exp(-(25.0 / on_iter) * (curr_iter -
-                                                    (on_iter / 2.0))))

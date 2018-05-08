@@ -89,5 +89,7 @@ ENV/
 # Rope project settings
 .ropeproject
 
-# 
+#
+logs/
+configs/
 model/
