@@ -5,28 +5,7 @@ import pandas as pd
 import numpy as np
 
 from .models import NNMF
-
-
-def load_data(train_filename,
-              valid_filename,
-              test_filename,
-              delimiter='\t',
-              col_names=['user_id', 'item_id', 'rating']):
-    """Helper function to load in/preprocess dataframes"""
-    train_data = pd.read_csv(
-        train_filename, delimiter=delimiter, header=None, names=col_names)
-    train_data['user_id'] = train_data['user_id'] - 1
-    train_data['item_id'] = train_data['item_id'] - 1
-    valid_data = pd.read_csv(
-        valid_filename, delimiter=delimiter, header=None, names=col_names)
-    valid_data['user_id'] = valid_data['user_id'] - 1
-    valid_data['item_id'] = valid_data['item_id'] - 1
-    test_data = pd.read_csv(
-        test_filename, delimiter=delimiter, header=None, names=col_names)
-    test_data['user_id'] = test_data['user_id'] - 1
-    test_data['item_id'] = test_data['item_id'] - 1
-
-    return train_data, valid_data, test_data
+from .utils import dataset
 
 
 def train(model, sess, saver, train_data, valid_data, batch_size, max_iters,
@@ -190,7 +169,7 @@ def run():
 
         # Process data
         print("Reading in data")
-        train_data, valid_data, test_data = load_data(
+        train_data, valid_data, test_data = dataset.load_data(
             train_filename,
             valid_filename,
             test_filename,
