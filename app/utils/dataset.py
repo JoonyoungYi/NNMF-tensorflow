@@ -2,12 +2,18 @@ import os
 
 import pandas as pd
 
+ML_100K = 'ml-100k'
+
 
 def load_data(train_filename,
               valid_filename,
               test_filename,
               delimiter='\t',
               col_names=['user_id', 'item_id', 'rating']):
+
+
+    
+    assert False
     """Helper function to load in/preprocess dataframes"""
     train_data = pd.read_csv(
         train_filename, delimiter=delimiter, header=None, names=col_names)
