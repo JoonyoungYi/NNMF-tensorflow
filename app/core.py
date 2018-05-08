@@ -66,24 +66,6 @@ def run():
     parser = argparse.ArgumentParser(
         description='Trains/evaluates NNMF models.')
     parser.add_argument(
-        '--train',
-        metavar='TRAIN_INPUT_FILE',
-        type=str,
-        default='data/ml-100k/split/u.data.train',
-        help='the location of the training set\'s input file')
-    parser.add_argument(
-        '--valid',
-        metavar='VALID_INPUT_FILE',
-        type=str,
-        default='data/ml-100k/split/u.data.valid',
-        help='the location of the validation set\'s input file')
-    parser.add_argument(
-        '--test',
-        metavar='TEST_INPUT_FILE',
-        type=str,
-        default='data/ml-100k/split/u.data.test',
-        help='the location of the test set\'s input file')
-    parser.add_argument(
         '--users',
         metavar='NUM_USERS',
         type=int,
@@ -146,9 +128,6 @@ def run():
     # Parse args
     args = parser.parse_args()
     # Global args
-    train_filename = args.train
-    valid_filename = args.valid
-    test_filename = args.test
     num_users = args.users
     num_items = args.movies
     model_params = json.loads(args.model_params)
@@ -169,12 +148,7 @@ def run():
 
         # Process data
         print("Reading in data")
-        train_data, valid_data, test_data = dataset.load_data(
-            train_filename,
-            valid_filename,
-            test_filename,
-            delimiter=delimiter,
-            col_names=col_names)
+        train_data, valid_data, test_data = dataset.load_data(dataset.ML_100K)
 
         train(
             model,
