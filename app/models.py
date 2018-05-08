@@ -14,6 +14,8 @@ class NNMF(object):
                                             'stddev': 0.1},
                  model_filename='logs/1/nnmf.ckpt',
                  lam=0.01):
+
+        self.lam = lam
         self.num_users = num_users
         self.num_items = num_items
         self.D = D
