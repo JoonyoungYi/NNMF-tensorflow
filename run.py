@@ -84,13 +84,6 @@ if __name__ == '__main__':
     # Set up command line params
     parser = argparse.ArgumentParser(
         description='Trains/evaluates NNMF models.')
-    # parser.add_argument(
-    #     '--mode',
-    #     metavar='MODE',
-    #     type=str,
-    #     choices=['train', 'select', 'test'],
-    #     help='the mode to run the program in',
-    #     required=True)
     parser.add_argument(
         '--train',
         metavar='TRAIN_INPUT_FILE',
@@ -178,7 +171,6 @@ if __name__ == '__main__':
     # Parse args
     args = parser.parse_args()
     # Global args
-    model_name = 'NNMF'
     mode = 'train'
     train_filename = args.train
     valid_filename = args.valid
@@ -197,14 +189,8 @@ if __name__ == '__main__':
         with tf.Session() as sess:
             # Define computation graph & Initialize
             print('Building network & initializing variables')
-            if model_name == 'NNMF':
-                model = NNMF(num_users, num_items, **model_params)
-            elif model_name == 'SVINNMF':
-                model = SVINNMF(num_users, num_items, **model_params)
-            else:
-                raise NotImplementedError(
-                    "Model '{}' not implemented".format(model_name))
 
+            model = NNMF(num_users, num_items, **model_params)
             model.init_sess(sess)
             saver = tf.train.Saver()
 
@@ -248,29 +234,14 @@ if __name__ == '__main__':
         _SVINNMF_VAR_MIN, _SVINNMF_VAR_MAX = -2.0, 2.0
         _SVINNMF_KL_ITER_MIN, _SVINNMF_KL_ITER_MAX = 2.0, 4.0
         for _ in range(hyperparam_search_size):
-            if model_name == 'NNMF':
-                hyperparams_list.append({
-                    'lam':
-                    10**np.random.uniform(_NNMF_LAM_MIN, _NNMF_LAM_MAX)
-                })
-            elif model_name == 'SVINNMF':
-                hyperparams_list.append({
-                    'U_prior_var':
-                    10**np.random.uniform(_SVINNMF_VAR_MIN, _SVINNMF_VAR_MAX),
-                    'Uprime_prior_var':
-                    10**np.random.uniform(_SVINNMF_VAR_MIN, _SVINNMF_VAR_MAX),
-                    'V_prior_var':
-                    10**np.random.uniform(_SVINNMF_VAR_MIN, _SVINNMF_VAR_MAX),
-                    'Vprime_prior_var':
-                    10**np.random.uniform(_SVINNMF_VAR_MIN, _SVINNMF_VAR_MAX),
-                    'kl_full_iter':
-                    int(10**np.random.uniform(_SVINNMF_KL_ITER_MIN,
-                                              _SVINNMF_KL_ITER_MAX))
-                })
+            hyperparams_list.append({
+                'lam':
+                10**np.random.uniform(_NNMF_LAM_MIN, _NNMF_LAM_MAX)
+            })
 
         # Setup folder to store models
         timestamp = int(time.time())
-        select_dir = "select/{}/{}".format(model_name, timestamp)
+        select_dir = "select/{}".format(timestamp)
         if not os.path.exists(select_dir):
             os.makedirs(select_dir)
 
@@ -289,14 +260,7 @@ if __name__ == '__main__':
             with tf.Session() as sess:
                 # Define computation graph & Initialize
                 print('Building network & initializing variables')
-                if model_name == 'NNMF':
-                    model = NNMF(num_users, num_items, **model_params)
-                elif model_name == 'SVINNMF':
-                    model_params.update({'kl_full_iter': 200})
-                    model = SVINNMF(num_users, num_items, **model_params)
-                else:
-                    raise NotImplementedError(
-                        "Model '{}' not implemented".format(model_name))
+                model = NNMF(num_users, num_items, **model_params)
 
                 model.init_sess(sess)
                 saver = tf.train.Saver()

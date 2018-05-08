@@ -11,8 +11,6 @@ from nnmf.models import NNMF, SVINNMF
 if __name__ == '__main__':
     # Set up command line params
     parser = argparse.ArgumentParser(description='Generates predictions using trained NNMF models.')
-    parser.add_argument('--model', metavar='MODEL_NAME', type=str, choices=['NNMF', 'SVINNMF'],
-                        help='the name of the model to use', required=True)
     parser.add_argument('--users', metavar='NUM_USERS', type=int, default=943, # ML 100K has 943 users
                         help='the number of users in the data set')
     parser.add_argument('--movies', metavar='NUM_MOVIES', type=int, default=1682, # ML 100K has 1682 movies
@@ -27,7 +25,6 @@ if __name__ == '__main__':
     # Parse args
     args = parser.parse_args()
 
-    model_name = args.model
     model_params = json.loads(args.model_params)
     num_users = args.users
     num_items = args.movies
@@ -35,13 +32,8 @@ if __name__ == '__main__':
     item_id = args.item
 
     print('Building network & initializing variables')
-    if model_name == 'NNMF':
-        model = NNMF(num_users, num_items, **model_params)
-    elif model_name == 'SVINNMF':
-        model = SVINNMF(num_users, num_items, **model_params)
-    else:
-        raise NotImplementedError("Model '{}' not implemented".format(model_name))
-
+    model = NNMF(num_users, num_items, **model_params)
+    
     with tf.Session() as sess:
         model.init_sess(sess)
         saver = tf.train.Saver()
