@@ -48,16 +48,9 @@ def train(model, sess, saver, train_data, valid_data, batch_size, max_iters,
             saver.save(sess, model.model_filename)
 
 
-def test(model, sess, saver, test_data, train_data=pd.DataFrame(), log=True):
-    if train_data.empty:
-        train_rmse = model.eval_rmse(train_data)
-        if log:
-            print("Final train RMSE: {}".format(train_rmse))
-
+def test(model, test_data):
     test_rmse = model.eval_rmse(test_data)
-    if log:
-        print("Final test RMSE: {}".format(test_rmse))
-
+    print("Final test RMSE: {}".format(test_rmse))
     return test_rmse
 
 
@@ -148,14 +141,14 @@ def run():
 
         # Process data
         print("Reading in data")
-        train_data, valid_data, test_data = dataset.load_data(dataset.ML_100K)
+        data = dataset.load_data(dataset.ML_100K)
 
         train(
             model,
             sess,
             saver,
-            train_data,
-            valid_data,
+            data['train'],
+            data['valid'],
             batch_size=batch_size,
             max_iters=max_iters,
             use_early_stop=use_early_stop,
@@ -163,4 +156,4 @@ def run():
 
         print('Loading best checkpointed model')
         saver.restore(sess, model.model_filename)
-        test(model, sess, saver, test_data, train_data=train_data)
+        test(model, data['test'])

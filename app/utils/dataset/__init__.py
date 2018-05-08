@@ -2,6 +2,8 @@ import os
 
 import pandas as pd
 
+from .ml_100k import load_ml_100k_data
+
 ML_100K = 'ml-100k'
 
 
@@ -19,28 +21,7 @@ def load_data(kind):
     _make_dir_if_not_exists(kind)
 
     if kind == ML_100K:
-        train_filename = 'data/ml-100k/u1.base'
-        valid_filename = 'data/ml-100k/u1.base'
-        test_filename = 'data/ml-100k/u1.test'
-        delimiter = '\t'
-        col_names = ['user_id', 'item_id', 'rating', 'timestamp']
-
-        train_data = pd.read_csv(
-            train_filename, delimiter=delimiter, header=None, names=col_names)
-        train_data['user_id'] = train_data['user_id'] - 1
-        train_data['item_id'] = train_data['item_id'] - 1
-
-        valid_data = pd.read_csv(
-            valid_filename, delimiter=delimiter, header=None, names=col_names)
-        valid_data['user_id'] = valid_data['user_id'] - 1
-        valid_data['item_id'] = valid_data['item_id'] - 1
-
-        test_data = pd.read_csv(
-            test_filename, delimiter=delimiter, header=None, names=col_names)
-        test_data['user_id'] = test_data['user_id'] - 1
-        test_data['item_id'] = test_data['item_id'] - 1
-
-        return train_data, valid_data, test_data
+        return load_ml_100k_data()
     else:
         raise NotImplementedError(
             "Kind '{}' is not implemented yet.".format(kind))
