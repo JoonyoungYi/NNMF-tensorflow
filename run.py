@@ -1,14 +1,10 @@
-#!/usr/bin/env python2.7
-from __future__ import absolute_import, print_function
-"""Trains/evaluates NNMF models."""
-# Standard modules
 import argparse, json, time, os
-# Third party modules
+
 import tensorflow as tf
 import pandas as pd
 import numpy as np
-# Package modules
-from nnmf.models import NNMF, SVINNMF
+
+from nnmf.models import NNMF
 
 
 def load_data(train_filename,
