@@ -93,3 +93,4 @@ ENV/
 logs/
 configs/
 model/
+data/
