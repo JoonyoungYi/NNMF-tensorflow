@@ -88,20 +88,13 @@ if __name__ == '__main__':
     # Set up command line params
     parser = argparse.ArgumentParser(
         description='Trains/evaluates NNMF models.')
-    parser.add_argument(
-        '--model',
-        metavar='MODEL_NAME',
-        type=str,
-        choices=['NNMF', 'SVINNMF'],
-        help='the name of the model to use',
-        required=True)
-    parser.add_argument(
-        '--mode',
-        metavar='MODE',
-        type=str,
-        choices=['train', 'select', 'test'],
-        help='the mode to run the program in',
-        required=True)
+    # parser.add_argument(
+    #     '--mode',
+    #     metavar='MODE',
+    #     type=str,
+    #     choices=['train', 'select', 'test'],
+    #     help='the mode to run the program in',
+    #     required=True)
     parser.add_argument(
         '--train',
         metavar='TRAIN_INPUT_FILE',
@@ -189,8 +182,8 @@ if __name__ == '__main__':
     # Parse args
     args = parser.parse_args()
     # Global args
-    model_name = args.model
-    mode = args.mode
+    model_name = 'NNMF'
+    mode = 'train'
     train_filename = args.train
     valid_filename = args.valid
     test_filename = args.test
