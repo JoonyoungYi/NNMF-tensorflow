@@ -3,7 +3,7 @@ import tensorflow as tf
 from .utils.mlp import build as build_mlp
 
 
-class _NNMFBase(object):
+class NNMF(object):
     def __init__(self,
                  num_users,
                  num_items,
@@ -12,7 +12,8 @@ class _NNMFBase(object):
                  hidden_units_per_layer=50,
                  latent_normal_init_params={'mean': 0.0,
                                             'stddev': 0.1},
-                 model_filename='logs/1/nnmf.ckpt'):
+                 model_filename='logs/1/nnmf.ckpt',
+                 lam=0.01):
         self.num_users = num_users
         self.num_items = num_items
         self.D = D
@@ -37,71 +38,10 @@ class _NNMFBase(object):
         self.rmse = tf.sqrt(
             tf.reduce_mean(tf.square(tf.subtract(self.r, self.r_target))))
 
-    def _init_vars(self):
-        raise NotImplementedError
-
-    def _init_ops(self):
-        raise NotImplementedError
-
     def init_sess(self, sess):
         self.sess = sess
         init = tf.initialize_all_variables()
         self.sess.run(init)
-
-    def _train_iteration(self, data, additional_feed=None):
-        user_ids = data['user_id']
-        item_ids = data['item_id']
-        ratings = data['rating']
-
-        feed_dict = {
-            self.user_index: user_ids,
-            self.item_index: item_ids,
-            self.r_target: ratings
-        }
-
-        if additional_feed:
-            feed_dict.update(additional_feed)
-
-        for step in self.optimize_steps:
-            self.sess.run(step, feed_dict=feed_dict)
-
-        self._iters += 1
-
-    def train_iteration(self, data):
-        self._train_iteration(data)
-
-    def eval_loss(self, data):
-        raise NotImplementedError
-
-    def eval_rmse(self, data):
-        user_ids = data['user_id']
-        item_ids = data['item_id']
-        ratings = data['rating']
-
-        feed_dict = {
-            self.user_index: user_ids,
-            self.item_index: item_ids,
-            self.r_target: ratings
-        }
-        return self.sess.run(self.rmse, feed_dict=feed_dict)
-
-    def predict(self, user_id, item_id):
-        rating = self.sess.run(
-            self.r,
-            feed_dict={self.user_index: [user_id],
-                       self.item_index: [item_id]})
-        return rating[0]
-
-
-class NNMF(_NNMFBase):
-    def __init__(self, *args, **kwargs):
-        if 'lam' in kwargs:
-            self.lam = float(kwargs['lam'])
-            del kwargs['lam']
-        else:
-            self.lam = 0.01
-
-        super(NNMF, self).__init__(*args, **kwargs)
 
     def _init_vars(self):
         # Latents
@@ -162,6 +102,25 @@ class NNMF(_NNMFBase):
 
         self.optimize_steps = [f_train_step, latent_train_step]
 
+    def train_iteration(self, data, additional_feed=None):
+        user_ids = data['user_id']
+        item_ids = data['item_id']
+        ratings = data['rating']
+
+        feed_dict = {
+            self.user_index: user_ids,
+            self.item_index: item_ids,
+            self.r_target: ratings
+        }
+
+        if additional_feed:
+            feed_dict.update(additional_feed)
+
+        for step in self.optimize_steps:
+            self.sess.run(step, feed_dict=feed_dict)
+
+        self._iters += 1
+
     def eval_loss(self, data):
         user_ids = data['user_id']
         item_ids = data['item_id']
@@ -173,3 +132,22 @@ class NNMF(_NNMFBase):
             self.r_target: ratings
         }
         return self.sess.run(self.loss, feed_dict=feed_dict)
+
+    def predict(self, user_id, item_id):
+        rating = self.sess.run(
+            self.r,
+            feed_dict={self.user_index: [user_id],
+                       self.item_index: [item_id]})
+        return rating[0]
+
+    def eval_rmse(self, data):
+        user_ids = data['user_id']
+        item_ids = data['item_id']
+        ratings = data['rating']
+
+        feed_dict = {
+            self.user_index: user_ids,
+            self.item_index: item_ids,
+            self.r_target: ratings
+        }
+        return self.sess.run(self.rmse, feed_dict=feed_dict)
