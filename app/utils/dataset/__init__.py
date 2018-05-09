@@ -3,25 +3,29 @@ import os
 import pandas as pd
 
 from .ml_100k import load_ml_100k_data
-
-ML_100K = 'ml-100k'
-
-
-def _make_dir_if_not_exists(kind):
-    if not os.path.exists('data'):
-        os.mkdir('data')
-    if not os.path.exists('data/{}'.format(kind)):
-        os.system(
-            'wget http://files.grouplens.org/datasets/movielens/ml-100k.zip -O data/ml-100k.zip'
-        )
-        os.system('unzip data/{}.zip -d data'.format(kind))
+from .ml_1m import load_ml_1m_data
+from . import utils
+from .utils import ML_100K
+from .utils import ML_1M
 
 
 def load_data(kind):
-    _make_dir_if_not_exists(kind)
+    utils.make_dir_if_not_exists('data')
 
     if kind == ML_100K:
         return load_ml_100k_data()
+    elif kind == ML_1M:
+        return load_ml_1m_data()
+    else:
+        raise NotImplementedError(
+            "Kind '{}' is not implemented yet.".format(kind))
+
+
+def get_N_and_M(kind):
+    if kind == ML_100K:
+        return 943, 1682
+    elif kind == ML_1M:
+        return 6040, 3952
     else:
         raise NotImplementedError(
             "Kind '{}' is not implemented yet.".format(kind))

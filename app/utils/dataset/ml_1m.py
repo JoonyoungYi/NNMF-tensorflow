@@ -1,21 +1,22 @@
 import pandas as pd
 
 from . import utils
-from .utils import ML_100K as KEY
+from .utils import ML_1M as KEY
 
 _COL_NAMES = ['user_id', 'item_id', 'rating', 'timestamp']
-_DELIMITER = '\t'
+_DELIMITER = '::'
 
 
-def load_ml_100k_data():
+def load_ml_1m_data():
     utils.download_data_if_not_exists(
-        KEY, 'http://files.grouplens.org/datasets/movielens/ml-100k.zip')
+        KEY, 'http://files.grouplens.org/datasets/movielens/ml-1m.zip')
 
-    base_file_name, test_file_name = utils.split_data(
-        KEY, 'u.data', ('base', 'test'), rate=0.9)
+    base_file_name, test_file_name = utils.split_data(KEY, 'ratings.dat',
+                                                      ('base', 'test'))
     train_file_name, valid_file_name = utils.split_data(
-        KEY, base_file_name, ('train', 'valid'), rate=0.98)
+        KEY, base_file_name, ('train', 'valid'))
 
+    #TODO: change index or item_ids and user_ids
     train_data = pd.read_csv(
         utils.get_file_path(KEY, train_file_name),
         delimiter=_DELIMITER,

@@ -1,28 +1,35 @@
+import os
+import time
+
 import tensorflow as tf
 
 from .utils.mlp import build as build_mlp
+from .utils.dataset import get_N_and_M
+
+
+def _init_model_file_path(kind):
+    folder_path = 'logs/{}'.format(int(time.time() * 1000))
+    if not os.path.exists(folder_path):
+        os.mkdir(folder_path)
+    return os.path.join(folder_path, 'model.ckpt')
 
 
 class NNMF(object):
     def __init__(self,
-                 num_users,
-                 num_items,
+                 kind,
                  D=10,
-                 Dprime=60,
+                 D_prime=60,
                  hidden_units_per_layer=50,
                  latent_normal_init_params={'mean': 0.0,
                                             'stddev': 0.1},
-                 model_filename='logs/1/nnmf.ckpt',
-                 lam=0.01):
-
-        self.lam = lam
-        self.num_users = num_users
-        self.num_items = num_items
+                 lambda_value=0.01):
+        self.lambda_value = lambda_value
+        self.N, self.M = get_N_and_M(kind)
         self.D = D
-        self.Dprime = Dprime
+        self.D_prime = D_prime
         self.hidden_units_per_layer = hidden_units_per_layer
         self.latent_normal_init_params = latent_normal_init_params
-        self.model_filename = model_filename
+        self.model_file_path = _init_model_file_path(kind)
 
         # Internal counter to keep track of current iteration
         self._iters = 0
@@ -48,34 +55,39 @@ class NNMF(object):
     def _init_vars(self):
         # Latents
         self.U = tf.Variable(
-            tf.truncated_normal([self.num_users, self.D], **
+            tf.truncated_normal([self.N, self.D], **
                                 self.latent_normal_init_params))
-        self.Uprime = tf.Variable(
-            tf.truncated_normal([self.num_users, self.Dprime], **
+        self.U_prime = tf.Variable(
+            tf.truncated_normal([self.N, self.D_prime], **
                                 self.latent_normal_init_params))
         self.V = tf.Variable(
-            tf.truncated_normal([self.num_items, self.D], **
+            tf.truncated_normal([self.M, self.D], **
                                 self.latent_normal_init_params))
-        self.Vprime = tf.Variable(
-            tf.truncated_normal([self.num_items, self.Dprime], **
+        self.V_prime = tf.Variable(
+            tf.truncated_normal([self.M, self.D_prime], **
                                 self.latent_normal_init_params))
 
         # Lookups
-        self.U_lu = tf.nn.embedding_lookup(self.U, self.user_index)
-        self.Uprime_lu = tf.nn.embedding_lookup(self.Uprime, self.user_index)
-        self.V_lu = tf.nn.embedding_lookup(self.V, self.item_index)
-        self.Vprime_lu = tf.nn.embedding_lookup(self.Vprime, self.item_index)
+        self.U_lookup = tf.nn.embedding_lookup(self.U, self.user_index)
+        self.U_prime_lookup = tf.nn.embedding_lookup(self.U_prime,
+                                                     self.user_index)
+        self.V_lookup = tf.nn.embedding_lookup(self.V, self.item_index)
+        self.V_prime_lookup = tf.nn.embedding_lookup(self.V_prime,
+                                                     self.item_index)
 
         # MLP ("f")
         f_input_layer = tf.concat(
             values=[
-                self.U_lu, self.V_lu,
-                tf.multiply(self.Uprime_lu, self.Vprime_lu)
+                self.U_lookup, self.V_lookup,
+                tf.multiply(self.U_prime_lookup, self.V_prime_lookup)
             ],
             axis=1)
 
         _r, self.mlp_weights = build_mlp(
-            f_input_layer, hidden_units_per_layer=self.hidden_units_per_layer)
+            f_input_layer,
+            hidden_unit_number=self.hidden_units_per_layer,
+            output_unit_number=1,
+            hidden_layer_number=3)
         # self.r = _r
         self.r = tf.squeeze(_r, squeeze_dims=[1])
 
@@ -84,26 +96,24 @@ class NNMF(object):
         reconstruction_loss = tf.reduce_sum(
             tf.square(tf.subtract(self.r_target, self.r)),
             reduction_indices=[0])
-        reg = tf.add_n([
-            tf.reduce_sum(tf.square(self.Uprime), reduction_indices=[0, 1]),
+        regularizer_loss = tf.add_n([
+            tf.reduce_sum(tf.square(self.U_prime), reduction_indices=[0, 1]),
             tf.reduce_sum(tf.square(self.U), reduction_indices=[0, 1]),
             tf.reduce_sum(tf.square(self.V), reduction_indices=[0, 1]),
-            tf.reduce_sum(tf.square(self.Vprime), reduction_indices=[0, 1])
+            tf.reduce_sum(tf.square(self.V_prime), reduction_indices=[0, 1])
         ])
-        self.loss = reconstruction_loss + (self.lam * reg)
+        self.loss = reconstruction_loss + (
+            self.lambda_value * regularizer_loss)
 
         # Optimizer
-        # self.optimizer = tf.train.AdamOptimizer()
-        # self.optimizer = tf.train.AdamOptimizer(1e-4)
         self.optimizer = tf.train.RMSPropOptimizer(1e-3)
 
         # Optimize the MLP weights
         f_train_step = self.optimizer.minimize(
-            self.loss,
-            var_list=[self.mlp_weights[key] for key in self.mlp_weights])
+            self.loss, var_list=self.mlp_weights)
         # Then optimize the latents
         latent_train_step = self.optimizer.minimize(
-            self.loss, var_list=[self.U, self.Uprime, self.V, self.Vprime])
+            self.loss, var_list=[self.U, self.U_prime, self.V, self.V_prime])
 
         self.optimize_steps = [f_train_step, latent_train_step]
 
