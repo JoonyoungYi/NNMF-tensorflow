@@ -19,6 +19,7 @@ class NNMF(object):
                  kind,
                  D=10,
                  D_prime=60,
+                 K=1,
                  hidden_units_per_layer=50,
                  latent_normal_init_params={'mean': 0.0,
                                             'stddev': 0.1},
@@ -27,6 +28,7 @@ class NNMF(object):
         self.N, self.M = get_N_and_M(kind)
         self.D = D
         self.D_prime = D_prime
+        self.K = K
         self.hidden_units_per_layer = hidden_units_per_layer
         self.latent_normal_init_params = latent_normal_init_params
         self.model_file_path = _init_model_file_path(kind)
@@ -58,13 +60,13 @@ class NNMF(object):
             tf.truncated_normal([self.N, self.D], **
                                 self.latent_normal_init_params))
         self.U_prime = tf.Variable(
-            tf.truncated_normal([self.N, self.D_prime], **
+            tf.truncated_normal([self.N, self.D_prime, self.K], **
                                 self.latent_normal_init_params))
         self.V = tf.Variable(
             tf.truncated_normal([self.M, self.D], **
                                 self.latent_normal_init_params))
         self.V_prime = tf.Variable(
-            tf.truncated_normal([self.M, self.D_prime], **
+            tf.truncated_normal([self.M, self.D_prime, self.K], **
                                 self.latent_normal_init_params))
 
         # Lookups
@@ -76,12 +78,10 @@ class NNMF(object):
                                                      self.item_index)
 
         # MLP ("f")
+        prime = tf.reduce_sum(
+            tf.multiply(self.U_prime_lookup, self.V_prime_lookup), axis=2)
         f_input_layer = tf.concat(
-            values=[
-                self.U_lookup, self.V_lookup,
-                tf.multiply(self.U_prime_lookup, self.V_prime_lookup)
-            ],
-            axis=1)
+            values=[self.U_lookup, self.V_lookup, prime], axis=1)
 
         _r, self.mlp_weights = build_mlp(
             f_input_layer,
@@ -97,10 +97,10 @@ class NNMF(object):
             tf.square(tf.subtract(self.r_target, self.r)),
             reduction_indices=[0])
         regularizer_loss = tf.add_n([
-            tf.reduce_sum(tf.square(self.U_prime), reduction_indices=[0, 1]),
-            tf.reduce_sum(tf.square(self.U), reduction_indices=[0, 1]),
-            tf.reduce_sum(tf.square(self.V), reduction_indices=[0, 1]),
-            tf.reduce_sum(tf.square(self.V_prime), reduction_indices=[0, 1])
+            tf.reduce_sum(tf.square(self.U_prime)),
+            tf.reduce_sum(tf.square(self.U)),
+            tf.reduce_sum(tf.square(self.V)),
+            tf.reduce_sum(tf.square(self.V_prime))
         ])
         self.loss = reconstruction_loss + (
             self.lambda_value * regularizer_loss)
