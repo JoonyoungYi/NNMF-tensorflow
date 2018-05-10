@@ -12,7 +12,7 @@ def _get_batch(train_data, batch_size):
 
 
 def _train(model, sess, saver, train_data, valid_data, batch_size):
-    prev_valid_loss = float("Inf")
+    prev_valid_rmse = float("Inf")
     early_stop_iters = 0
     for i in range(MAX_ITER):
         # Run SGD
@@ -29,13 +29,13 @@ def _train(model, sess, saver, train_data, valid_data, batch_size):
 
         if EARLY_STOP:
             early_stop_iters += 1
-            if valid_loss < prev_valid_loss:
-                prev_valid_loss = valid_loss
+            if valid_rmse < prev_valid_rmse:
+                prev_valid_rmse = valid_rmse
                 early_stop_iters = 0
                 saver.save(sess, model.model_file_path)
             elif early_stop_iters >= EARLY_STOP_MAX_ITER:
                 print("Early stopping ({} vs. {})...".format(
-                    prev_valid_loss, valid_loss))
+                    prev_valid_rmse, valid_rmse))
                 break
         else:
             saver.save(sess, model.model_file_path)

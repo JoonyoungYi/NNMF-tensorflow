@@ -46,13 +46,15 @@ class NNMF(object):
         self._init_ops()
 
         # RMSE
+        # self.rmse = tf.sqrt(
+        #     tf.reduce_mean(
+        #         tf.square(
+        #             tf.subtract(
+        #                 tf.clip_by_value(
+        #                     self.r, clip_value_min=1, clip_value_max=5),
+        #                 self.r_target))))
         self.rmse = tf.sqrt(
-            tf.reduce_mean(
-                tf.square(
-                    tf.subtract(
-                        tf.clip_by_value(
-                            self.r, clip_value_min=1, clip_value_max=5),
-                        self.r_target))))
+            tf.reduce_mean(tf.square(tf.subtract(self.r, self.r_target))))
 
     def init_sess(self, sess):
         self.sess = sess
