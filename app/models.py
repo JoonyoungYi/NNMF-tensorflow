@@ -55,6 +55,8 @@ class NNMF(object):
         self.sess.run(init)
 
     def _init_vars(self):
+        self.training = tf.placeholder(tf.bool)
+
         # Latents
         self.U = tf.Variable(
             tf.truncated_normal([self.N, self.D], **
@@ -83,11 +85,25 @@ class NNMF(object):
         f_input_layer = tf.concat(
             values=[self.U_lookup, self.V_lookup, prime], axis=1)
 
+        activation = tf.nn.sigmoid
+        # activation = tf.nn.relu
+
+        # hidden_layer_number = 4
+        hidden_layer_number = 3
+
+        # final_activation = None
+        final_activation = lambda x: (tf.nn.sigmoid(x) * 4 + 1)
+        # final_activation = lambda x: (tf.nn.tanh(x) * 2 + 3)
+
         _r, self.mlp_weights = build_mlp(
             f_input_layer,
+            self.training,
             hidden_unit_number=self.hidden_units_per_layer,
             output_unit_number=1,
-            hidden_layer_number=3)
+            hidden_layer_number=hidden_layer_number,
+            activation=activation,
+            final_activation=final_activation)
+
         # self.r = _r
         self.r = tf.squeeze(_r, squeeze_dims=[1])
 
@@ -107,6 +123,7 @@ class NNMF(object):
 
         # Optimizer
         self.optimizer = tf.train.RMSPropOptimizer(1e-3)
+        # self.optimizer = tf.train.AdamOptimizer(1e-3)
 
         # Optimize the MLP weights
         f_train_step = self.optimizer.minimize(
@@ -125,7 +142,8 @@ class NNMF(object):
         feed_dict = {
             self.user_index: user_ids,
             self.item_index: item_ids,
-            self.r_target: ratings
+            self.r_target: ratings,
+            self.training: True
         }
 
         if additional_feed:
@@ -144,15 +162,19 @@ class NNMF(object):
         feed_dict = {
             self.user_index: user_ids,
             self.item_index: item_ids,
-            self.r_target: ratings
+            self.r_target: ratings,
+            self.training: False
         }
         return self.sess.run(self.loss, feed_dict=feed_dict)
 
     def predict(self, user_id, item_id):
         rating = self.sess.run(
             self.r,
-            feed_dict={self.user_index: [user_id],
-                       self.item_index: [item_id]})
+            feed_dict={
+                self.user_index: [user_id],
+                self.item_index: [item_id],
+                self.training: False
+            })
         return rating[0]
 
     def eval_rmse(self, data):
@@ -163,6 +185,7 @@ class NNMF(object):
         feed_dict = {
             self.user_index: user_ids,
             self.item_index: item_ids,
-            self.r_target: ratings
+            self.r_target: ratings,
+            self.training: False
         }
         return self.sess.run(self.rmse, feed_dict=feed_dict)

@@ -11,6 +11,14 @@
   * `Matrix Factorization with Neural Networks and Stochastic Variational Inference` 논문에서 실험한 결과인 0.9380이 그나마 비슷한 성능인 것 같다.
   * 본인의 실험에서는 0.9426621927 의 결과를 나타내었음.
   * 실제 이 실험에서 내가 조절할 수 있는 부분은 lambda 값 밖에 없는 것 같다.
+  * Final Layer는
+    * 1. non-linear activation function 적용 안하기
+    * 2. sigmoid 적용하기
+    * 3. tanh 적용하기
+  * 를 해봤는데, 2가 제일 좋은 것 같다.
+  * activation function을 sigmoid에서 relu로 바꿔봤는데 성능이 하락함. 다른 parameter들이 물론 sigmoid에 맞춰져 있긴 했지만, 그래도 RMSE가 1.0 이상인 건 심하지 않았나.
+  * activation이 sigmoid일 때 layer 갯수 늘리면 성능이 좋아지는 것 같긴 하다. 
+
 
 * How to init:
 ```
