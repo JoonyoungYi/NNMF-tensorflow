@@ -41,7 +41,7 @@ def build(layer,
         if i < len(unit_numbers) - 1:
             # layer = tf.layers.batch_normalization(layer, training=training)
             layer = activation(layer)
-            # layer = tf.nn.dropout(layer, 0.5)
+            # layer = tf.nn.dropout(layer, 0.9)
         else:
             if final_activation:
                 layer = final_activation(layer)

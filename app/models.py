@@ -47,7 +47,12 @@ class NNMF(object):
 
         # RMSE
         self.rmse = tf.sqrt(
-            tf.reduce_mean(tf.square(tf.subtract(self.r, self.r_target))))
+            tf.reduce_mean(
+                tf.square(
+                    tf.subtract(
+                        tf.clip_by_value(
+                            self.r, clip_value_min=1, clip_value_max=5),
+                        self.r_target))))
 
     def init_sess(self, sess):
         self.sess = sess
@@ -91,8 +96,8 @@ class NNMF(object):
         # hidden_layer_number = 4
         hidden_layer_number = 3
 
-        # final_activation = None
-        final_activation = lambda x: (tf.nn.sigmoid(x) * 4 + 1)
+        final_activation = None
+        # final_activation = lambda x: (tf.nn.sigmoid(x) * 4 + 1)
         # final_activation = lambda x: (tf.nn.tanh(x) * 2 + 3)
 
         _r, self.mlp_weights = build_mlp(
@@ -112,6 +117,8 @@ class NNMF(object):
         reconstruction_loss = tf.reduce_sum(
             tf.square(tf.subtract(self.r_target, self.r)),
             reduction_indices=[0])
+        # reconstruction_loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(
+        #     logits=self.r, labels=((self.r_target - 1) / 4))) * 4
         regularizer_loss = tf.add_n([
             tf.reduce_sum(tf.square(self.U_prime)),
             tf.reduce_sum(tf.square(self.U)),

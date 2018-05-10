@@ -12,7 +12,7 @@ def _get_batch(train_data, batch_size):
 
 
 def _train(model, sess, saver, train_data, valid_data, batch_size):
-    prev_valid_rmse = float("Inf")
+    prev_valid_loss = float("Inf")
     early_stop_iters = 0
     for i in range(MAX_ITER):
         # Run SGD
@@ -20,20 +20,22 @@ def _train(model, sess, saver, train_data, valid_data, batch_size):
         model.train_iteration(batch)
 
         # Evaluate
-        train_error = model.eval_loss(batch)
+        train_loss = model.eval_loss(batch)
         train_rmse = model.eval_rmse(batch)
+        valid_loss = model.eval_loss(valid_data)
         valid_rmse = model.eval_rmse(valid_data)
-        print("{:3f} {:3f}, {:3f}".format(train_error, train_rmse, valid_rmse))
+        print("{:3f} {:3f}, {:3f} {:3f}".format(train_loss, train_rmse,
+                                                valid_loss, valid_rmse))
 
         if EARLY_STOP:
             early_stop_iters += 1
-            if valid_rmse < prev_valid_rmse:
-                prev_valid_rmse = valid_rmse
+            if valid_loss < prev_valid_loss:
+                prev_valid_loss = valid_loss
                 early_stop_iters = 0
                 saver.save(sess, model.model_file_path)
             elif early_stop_iters >= EARLY_STOP_MAX_ITER:
                 print("Early stopping ({} vs. {})...".format(
-                    prev_valid_rmse, valid_rmse))
+                    prev_valid_loss, valid_loss))
                 break
         else:
             saver.save(sess, model.model_file_path)
@@ -71,5 +73,5 @@ def run(batch_size=None, lambda_value=0.01):
 
         print('Loading best checkpointed model')
         saver.restore(sess, model.model_file_path)
-        valid_rmse, _ = _test(model, data['valid'], data['test'])
-        return valid_rmse
+        valid_rmse, test_rmse = _test(model, data['valid'], data['test'])
+        return valid_rmse, test_rmse
