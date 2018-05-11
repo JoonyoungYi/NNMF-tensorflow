@@ -68,7 +68,7 @@ class NNMF(object):
                  D=10,
                  D_prime=60,
                  K=1,
-                 hidden_units_per_layer=50,
+                 hidden_unit_number=50,
                  hidden_layer_number=3,
                  latent_normal_init_params={'mean': 0.0,
                                             'stddev': 0.1},
@@ -78,7 +78,7 @@ class NNMF(object):
         self.D = D
         self.D_prime = D_prime
         self.K = K
-        self.hidden_units_per_layer = hidden_units_per_layer
+        self.hidden_unit_number = hidden_unit_number
         self.latent_normal_init_params = latent_normal_init_params
         self.hidden_layer_number = hidden_layer_number
         self.model_file_path = _init_model_file_path(kind)
@@ -161,7 +161,7 @@ class NNMF(object):
         _r, self.mlp_weights = _build_mlp(
             f_input_layer,
             self.training,
-            hidden_unit_number=self.hidden_units_per_layer,
+            hidden_unit_number=self.hidden_unit_number,
             hidden_layer_number=self.hidden_layer_number,
             output_unit_number=1,
             activation=activation,

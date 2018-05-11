@@ -17,7 +17,7 @@ if __name__ == '__main__':
     # }
     hyper_params = {
         'lambda_value': 50,
-        'hidden_layer_number': 50,
+        'hidden_unit_number': 50,
     }
     batch_size = None
     valid_rmse, test_rmse = run(batch_size=batch_size, **hyper_params)
