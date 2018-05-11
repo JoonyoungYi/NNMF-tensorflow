@@ -22,13 +22,12 @@ def _get_weight_init_range(n_in, n_out):
 
 
 def _build_mlp(layer,
-               training,
-               dropout_rate,
-               hidden_unit_number,
-               hidden_layer_number,
-               output_unit_number,
+               training=False,
+               hidden_unit_number=50,
+               hidden_layer_number=3,
+               output_unit_number=1,
                activation=tf.nn.sigmoid,
-               final_activation=tf.nn.sigmoid):
+               final_activation=None):
     """
         Builds a feed-forward NN (MLP)
     """
@@ -51,7 +50,7 @@ def _build_mlp(layer,
 
         layer = tf.matmul(layer, W) + b
         if i < len(unit_numbers) - 1:
-            layer = tf.layers.batch_normalization(layer, training=training)
+            # layer = tf.layers.batch_normalization(layer, training=training)
             layer = activation(layer)
             # if dropout_rate > 0:
             #     layer = tf.layers.dropout(layer, rate=dropout_rate, training=training)
@@ -71,10 +70,9 @@ class NNMF(object):
                  K=1,
                  hidden_units_per_layer=50,
                  hidden_layer_number=3,
-                 dropout_rate=0,
                  latent_normal_init_params={'mean': 0.0,
                                             'stddev': 0.1},
-                 lambda_value=0.01):
+                 lambda_value=50):
         self.lambda_value = lambda_value
         self.N, self.M = get_N_and_M(kind)
         self.D = D
@@ -84,7 +82,7 @@ class NNMF(object):
         self.latent_normal_init_params = latent_normal_init_params
         self.hidden_layer_number = hidden_layer_number
         self.model_file_path = _init_model_file_path(kind)
-        self.dropout_rate = dropout_rate
+        # self.dropout_rate = dropout_rate
 
         # Internal counter to keep track of current iteration
         self._iters = 0
@@ -93,7 +91,7 @@ class NNMF(object):
         self.user_index = tf.placeholder(tf.int32, [None])
         self.item_index = tf.placeholder(tf.int32, [None])
         self.r_target = tf.placeholder(tf.float32, [None])
-        self.timestamp = tf.placeholder(tf.float32, [None])
+        # self.timestamp = tf.placeholder(tf.float32, [None])
 
         # Call methods to initialize variables and operations (to be implemented by children)
         self._init_vars()
@@ -131,6 +129,11 @@ class NNMF(object):
         self.V_prime = tf.Variable(
             tf.truncated_normal([self.M, self.D_prime, self.K], **
                                 self.latent_normal_init_params))
+        # self.T_W = tf.Variable(tf.ones([self.N]))
+        # 92809640
+        # 884005674 / 92809640 = 9.5249337677
+        # (874724710, 893286638) =
+        # T = tf.reshape(self.timestamp, [-1, 1]) / 92809640 - 9.5249337677
 
         # Lookups
         self.U_lookup = tf.nn.embedding_lookup(self.U, self.user_index)
@@ -144,10 +147,9 @@ class NNMF(object):
         prime = tf.reduce_sum(
             tf.multiply(self.U_prime_lookup, self.V_prime_lookup), axis=2)
         # f_input_layer = tf.concat(
-        #     values=[self.U_lookup, self.V_lookup, prime, tf.reshape(self.timestamp, [-1, 1])], axis=1)
+        #     values=[self.U_lookup, self.V_lookup, prime, T], axis=1)
         f_input_layer = tf.concat(
             values=[self.U_lookup, self.V_lookup, prime], axis=1)
-        # 1e-5 *
 
         activation = tf.nn.sigmoid
         # activation = tf.nn.relu
@@ -159,10 +161,9 @@ class NNMF(object):
         _r, self.mlp_weights = _build_mlp(
             f_input_layer,
             self.training,
-            dropout_rate=self.dropout_rate,
             hidden_unit_number=self.hidden_units_per_layer,
-            output_unit_number=1,
             hidden_layer_number=self.hidden_layer_number,
+            output_unit_number=1,
             activation=activation,
             final_activation=final_activation)
 
@@ -174,8 +175,6 @@ class NNMF(object):
         self.reconstruction_loss = tf.reduce_sum(
             tf.square(tf.subtract(self.r_target, self.r)),
             reduction_indices=[0])
-        # reconstruction_loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(
-        #     logits=self.r, labels=((self.r_target - 1) / 4))) * 4
         self.regularizer_loss = tf.add_n([
             tf.reduce_sum(tf.square(self.U_prime)),
             tf.reduce_sum(tf.square(self.U)),
@@ -199,11 +198,14 @@ class NNMF(object):
         self.optimize_steps = [f_train_step, latent_train_step]
 
     def train_iteration(self, data, additional_feed=None):
+        # import pandas as pd
+        # print(pd.Series.min(data['timestamp']))
+        # print(pd.Series.max(data['timestamp']))
         feed_dict = {
             self.user_index: data['user_id'],
             self.item_index: data['item_id'],
             self.r_target: data['rating'],
-            self.timestamp: data['timestamp'],
+            # self.timestamp: data['timestamp'],
             self.training: True
         }
 
@@ -220,8 +222,8 @@ class NNMF(object):
             self.user_index: data['user_id'],
             self.item_index: data['item_id'],
             self.r_target: data['rating'],
-            self.timestamp: data['timestamp'],
-            self.training: True
+            # self.timestamp: data['timestamp'],
+            self.training: False
         }
         return self.sess.run(self.loss, feed_dict=feed_dict)
 
@@ -231,7 +233,7 @@ class NNMF(object):
             feed_dict={
                 self.user_index: [user_id],
                 self.item_index: [item_id],
-                self.timestamp: data['timestamp'],
+                # self.timestamp: data['timestamp'],
                 self.training: False
             })
         return rating[0]
@@ -245,7 +247,7 @@ class NNMF(object):
             self.user_index: user_ids,
             self.item_index: item_ids,
             self.r_target: ratings,
-            self.timestamp: data['timestamp'],
+            # self.timestamp: data['timestamp'],
             self.training: False
         }
         return self.sess.run(self.rmse, feed_dict=feed_dict)

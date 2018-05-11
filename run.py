@@ -17,10 +17,9 @@ if __name__ == '__main__':
     # }
     hyper_params = {
         'lambda_value': 50,
-        'dropout_rate': 0.0,
         'hidden_layer_number': 50,
     }
-    batch_size = 20000
+    batch_size = None
     valid_rmse, test_rmse = run(batch_size=batch_size, **hyper_params)
 
     msg = '{}\t{}\t{}'.format('\t'.join(
