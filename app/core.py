@@ -48,7 +48,7 @@ def _test(model, valid_data, test_data):
     return valid_rmse, test_rmse
 
 
-def run(batch_size=None, lambda_value=0.01):
+def run(batch_size=None, **hyper_params):
     kind = dataset.ML_100K
     # kind = dataset.ML_1M
 
@@ -59,7 +59,7 @@ def run(batch_size=None, lambda_value=0.01):
 
         # Define computation graph & Initialize
         print('Building network & initializing variables')
-        model = NNMF(kind, lambda_value=lambda_value)
+        model = NNMF(kind, **hyper_params)
         model.init_sess(sess)
         saver = tf.train.Saver()
 
