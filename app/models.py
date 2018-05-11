@@ -1,9 +1,9 @@
 import os
 import time
+import math
 
 import tensorflow as tf
 
-from .utils.mlp import build as build_mlp
 from .utils.dataset import get_N_and_M
 
 
@@ -14,24 +14,75 @@ def _init_model_file_path(kind):
     return os.path.join(folder_path, 'model.ckpt')
 
 
+def _get_weight_init_range(n_in, n_out):
+    """
+        Calculates range for picking initial weight values from a uniform distribution.
+    """
+    return 4.0 * math.sqrt(6.0) / math.sqrt(n_in + n_out)
+
+
+def _build_mlp(layer,
+               training=False,
+               hidden_unit_number=50,
+               hidden_layer_number=3,
+               output_unit_number=1,
+               activation=tf.nn.sigmoid,
+               final_activation=None):
+    """
+        Builds a feed-forward NN (MLP)
+    """
+    prev_layer_unit_number = layer.get_shape().as_list()[1]
+    Ws, bs = [], []
+
+    unit_numbers = [hidden_unit_number] * (
+        hidden_layer_number - 1) + [output_unit_number]
+    for i, unit_number in enumerate(unit_numbers):
+        # MLP weights picked uniformly from +/- 4*sqrt(6)/sqrt(n_in + n_out)
+        range = _get_weight_init_range(prev_layer_unit_number, unit_number)
+        W = tf.Variable(
+            tf.random_uniform(
+                [prev_layer_unit_number, unit_number],
+                minval=-range,
+                maxval=range))
+        b = tf.Variable(tf.zeros([unit_number]))
+        Ws.append(W)
+        bs.append(b)
+
+        layer = tf.matmul(layer, W) + b
+        if i < len(unit_numbers) - 1:
+            # layer = tf.layers.batch_normalization(layer, training=training)
+            layer = activation(layer)
+            # if dropout_rate > 0:
+            #     layer = tf.layers.dropout(layer, rate=dropout_rate, training=training)
+        else:
+            if final_activation:
+                layer = final_activation(layer)
+        prev_layer_unit_number = unit_number
+
+    return layer, Ws + bs
+
+
 class NNMF(object):
     def __init__(self,
                  kind,
                  D=10,
                  D_prime=60,
                  K=1,
-                 hidden_units_per_layer=50,
+                 hidden_unit_number=50,
+                 hidden_layer_number=3,
                  latent_normal_init_params={'mean': 0.0,
                                             'stddev': 0.1},
-                 lambda_value=0.01):
+                 lambda_value=50):
         self.lambda_value = lambda_value
         self.N, self.M = get_N_and_M(kind)
         self.D = D
         self.D_prime = D_prime
         self.K = K
-        self.hidden_units_per_layer = hidden_units_per_layer
+        self.hidden_unit_number = hidden_unit_number
         self.latent_normal_init_params = latent_normal_init_params
+        self.hidden_layer_number = hidden_layer_number
         self.model_file_path = _init_model_file_path(kind)
+        # self.dropout_rate = dropout_rate
 
         # Internal counter to keep track of current iteration
         self._iters = 0
@@ -40,6 +91,7 @@ class NNMF(object):
         self.user_index = tf.placeholder(tf.int32, [None])
         self.item_index = tf.placeholder(tf.int32, [None])
         self.r_target = tf.placeholder(tf.float32, [None])
+        # self.timestamp = tf.placeholder(tf.float32, [None])
 
         # Call methods to initialize variables and operations (to be implemented by children)
         self._init_vars()
@@ -77,6 +129,11 @@ class NNMF(object):
         self.V_prime = tf.Variable(
             tf.truncated_normal([self.M, self.D_prime, self.K], **
                                 self.latent_normal_init_params))
+        # self.T_W = tf.Variable(tf.ones([self.N]))
+        # 92809640
+        # 884005674 / 92809640 = 9.5249337677
+        # (874724710, 893286638) =
+        # T = tf.reshape(self.timestamp, [-1, 1]) / 92809640 - 9.5249337677
 
         # Lookups
         self.U_lookup = tf.nn.embedding_lookup(self.U, self.user_index)
@@ -89,25 +146,24 @@ class NNMF(object):
         # MLP ("f")
         prime = tf.reduce_sum(
             tf.multiply(self.U_prime_lookup, self.V_prime_lookup), axis=2)
+        # f_input_layer = tf.concat(
+        #     values=[self.U_lookup, self.V_lookup, prime, T], axis=1)
         f_input_layer = tf.concat(
             values=[self.U_lookup, self.V_lookup, prime], axis=1)
 
         activation = tf.nn.sigmoid
         # activation = tf.nn.relu
 
-        # hidden_layer_number = 4
-        hidden_layer_number = 3
-
         final_activation = None
         # final_activation = lambda x: (tf.nn.sigmoid(x) * 4 + 1)
         # final_activation = lambda x: (tf.nn.tanh(x) * 2 + 3)
 
-        _r, self.mlp_weights = build_mlp(
+        _r, self.mlp_weights = _build_mlp(
             f_input_layer,
             self.training,
-            hidden_unit_number=self.hidden_units_per_layer,
+            hidden_unit_number=self.hidden_unit_number,
+            hidden_layer_number=self.hidden_layer_number,
             output_unit_number=1,
-            hidden_layer_number=hidden_layer_number,
             activation=activation,
             final_activation=final_activation)
 
@@ -116,19 +172,17 @@ class NNMF(object):
 
     def _init_ops(self):
         # Loss
-        reconstruction_loss = tf.reduce_sum(
+        self.reconstruction_loss = tf.reduce_sum(
             tf.square(tf.subtract(self.r_target, self.r)),
             reduction_indices=[0])
-        # reconstruction_loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(
-        #     logits=self.r, labels=((self.r_target - 1) / 4))) * 4
-        regularizer_loss = tf.add_n([
+        self.regularizer_loss = tf.add_n([
             tf.reduce_sum(tf.square(self.U_prime)),
             tf.reduce_sum(tf.square(self.U)),
             tf.reduce_sum(tf.square(self.V)),
-            tf.reduce_sum(tf.square(self.V_prime))
+            tf.reduce_sum(tf.square(self.V_prime)),
         ])
-        self.loss = reconstruction_loss + (
-            self.lambda_value * regularizer_loss)
+        self.loss = self.reconstruction_loss + (
+            self.lambda_value * self.regularizer_loss)
 
         # Optimizer
         self.optimizer = tf.train.RMSPropOptimizer(1e-3)
@@ -144,14 +198,14 @@ class NNMF(object):
         self.optimize_steps = [f_train_step, latent_train_step]
 
     def train_iteration(self, data, additional_feed=None):
-        user_ids = data['user_id']
-        item_ids = data['item_id']
-        ratings = data['rating']
-
+        # import pandas as pd
+        # print(pd.Series.min(data['timestamp']))
+        # print(pd.Series.max(data['timestamp']))
         feed_dict = {
-            self.user_index: user_ids,
-            self.item_index: item_ids,
-            self.r_target: ratings,
+            self.user_index: data['user_id'],
+            self.item_index: data['item_id'],
+            self.r_target: data['rating'],
+            # self.timestamp: data['timestamp'],
             self.training: True
         }
 
@@ -164,14 +218,11 @@ class NNMF(object):
         self._iters += 1
 
     def eval_loss(self, data):
-        user_ids = data['user_id']
-        item_ids = data['item_id']
-        ratings = data['rating']
-
         feed_dict = {
-            self.user_index: user_ids,
-            self.item_index: item_ids,
-            self.r_target: ratings,
+            self.user_index: data['user_id'],
+            self.item_index: data['item_id'],
+            self.r_target: data['rating'],
+            # self.timestamp: data['timestamp'],
             self.training: False
         }
         return self.sess.run(self.loss, feed_dict=feed_dict)
@@ -182,6 +233,7 @@ class NNMF(object):
             feed_dict={
                 self.user_index: [user_id],
                 self.item_index: [item_id],
+                # self.timestamp: data['timestamp'],
                 self.training: False
             })
         return rating[0]
@@ -195,6 +247,7 @@ class NNMF(object):
             self.user_index: user_ids,
             self.item_index: item_ids,
             self.r_target: ratings,
+            # self.timestamp: data['timestamp'],
             self.training: False
         }
         return self.sess.run(self.rmse, feed_dict=feed_dict)
