@@ -72,7 +72,8 @@ class NNMF(object):
                  hidden_layer_number=3,
                  latent_normal_init_params={'mean': 0.0,
                                             'stddev': 0.1},
-                 lambda_value=50):
+                 lambda_value=50,
+                 learning_rate=1e-3):
         self.lambda_value = lambda_value
         self.N, self.M = get_N_and_M(kind)
         self.D = D
@@ -83,6 +84,7 @@ class NNMF(object):
         self.hidden_layer_number = hidden_layer_number
         self.model_file_path = _init_model_file_path(kind)
         # self.dropout_rate = dropout_rate
+        self.learning_rate = learning_rate
 
         # Internal counter to keep track of current iteration
         self._iters = 0
@@ -185,7 +187,7 @@ class NNMF(object):
             self.lambda_value * self.regularizer_loss)
 
         # Optimizer
-        self.optimizer = tf.train.RMSPropOptimizer(1e-3)
+        self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate)
         # self.optimizer = tf.train.AdamOptimizer(1e-3)
 
         # Optimize the MLP weights
